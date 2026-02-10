@@ -6,6 +6,12 @@ const fs = require('fs');
 const app = express();
 const PORT = 3000;
 
+// Create generated-diaries directory if it doesn't exist
+const generatedDir = path.join(__dirname, 'generated-diaries');
+if (!fs.existsSync(generatedDir)) {
+    fs.mkdirSync(generatedDir);
+}
+
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -22,6 +28,7 @@ const upload = multer({
 
 // Serve static files
 app.use(express.static(__dirname));
+app.use('/generated-diaries', express.static(generatedDir));
 
 // Main route
 app.get('/', (req, res) => {
@@ -52,13 +59,23 @@ app.post('/generate', upload.array('images', 10), async (req, res) => {
         // Replace placeholders
         const imageUrlsString = JSON.stringify(imageUrls, null, 2);
         template = template.replace('{{IMAGE_URLS}}', imageUrlsString);
-        template = template.replace('{{PARTNER1}}', partner1 || 'Partner 1');
-        template = template.replace('{{PARTNER2}}', partner2 || 'Partner 2');
+        template = template.replace(/{{PARTNER1}}/g, partner1 || 'Partner 1');
+        template = template.replace(/{{PARTNER2}}/g, partner2 || 'Partner 2');
 
-        // Send the generated HTML
-        res.setHeader('Content-Type', 'text/html');
-        res.setHeader('Content-Disposition', 'attachment; filename="diary.html"');
-        res.send(template);
+        // Generate unique filename
+        const timestamp = Date.now();
+        const filename = `diary-${timestamp}.html`;
+        const filepath = path.join(generatedDir, filename);
+
+        // Save the generated HTML
+        fs.writeFileSync(filepath, template);
+
+        // Return the URL
+        res.json({
+            success: true,
+            url: `/generated-diaries/${filename}`,
+            filename: filename
+        });
 
     } catch (error) {
         console.error('Error generating diary:', error);
