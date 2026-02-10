@@ -70,7 +70,17 @@
                         </svg>
                     </div>
                     <h2 class="text-3xl font-bold text-gray-800 mb-2 header-font">🎉 Diary Created!</h2>
-                    <p class="text-gray-600">Your beautiful couple diary is ready to share</p>
+                    <p class="text-gray-600 mb-4">Your beautiful couple diary is ready to share</p>
+                    
+                    <!-- Shareable URL Display -->
+                    <div class="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 mb-4">
+                        <p class="text-xs text-gray-500 mb-2 font-semibold">Your Diary URL:</p>
+                        <div class="flex items-center gap-2">
+                            <input id="diary-url-display" type="text" readonly 
+                                   class="flex-1 text-sm bg-white px-3 py-2 rounded-lg border border-purple-300 text-gray-700 font-mono"
+                                   value="">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="space-y-3 mb-6">
@@ -340,6 +350,9 @@
                     const data = await response.json();
                     generatedDiaryUrl = window.location.origin + data.url;
                     
+                    // Update the URL display in popup
+                    document.getElementById('diary-url-display').value = generatedDiaryUrl;
+                    
                     // Show success popup
                     document.getElementById('success-popup').classList.remove('hidden');
                     
@@ -378,12 +391,31 @@
             }
         }
 
-        function downloadDiary() {
+        async function downloadDiary() {
             if (generatedDiaryUrl) {
-                const a = document.createElement('a');
-                a.href = generatedDiaryUrl;
-                a.download = 'our-diary.html';
-                a.click();
+                try {
+                    // Fetch the HTML content
+                    const response = await fetch(generatedDiaryUrl);
+                    const htmlContent = await response.text();
+                    
+                    // Create blob and download
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    // Get partner names for filename
+                    const partner1 = document.getElementById('partner1').value.trim() || 'Partner1';
+                    const partner2 = document.getElementById('partner2').value.trim() || 'Partner2';
+                    a.download = `${partner1}-${partner2}-Diary.html`;
+                    
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error('Download error:', error);
+                    // Fallback: just open in new tab
+                    window.open(generatedDiaryUrl, '_blank');
+                }
             }
         }
 
