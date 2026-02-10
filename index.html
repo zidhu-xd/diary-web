@@ -60,6 +60,48 @@
             <p class="text-center text-gray-600 text-lg">Upload your precious memories and create a beautiful interactive diary</p>
         </div>
 
+        <!-- Success Popup Modal -->
+        <div id="success-popup" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 transform transition-all">
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2 header-font">🎉 Diary Created!</h2>
+                    <p class="text-gray-600">Your beautiful couple diary is ready to share</p>
+                </div>
+
+                <div class="space-y-3 mb-6">
+                    <button onclick="openDiary()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-xl text-lg header-font shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                        Open Diary
+                    </button>
+
+                    <button onclick="copyLink()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-4 px-6 rounded-xl text-lg header-font transition-all duration-200 flex items-center justify-center gap-2">
+                        <svg id="copy-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        <span id="copy-text">Copy Link</span>
+                    </button>
+
+                    <button onclick="downloadDiary()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-4 px-6 rounded-xl text-lg header-font transition-all duration-200 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Download HTML
+                    </button>
+                </div>
+
+                <button onclick="closePopup()" class="w-full text-gray-500 hover:text-gray-700 font-semibold py-2 transition-colors">
+                    Create Another Diary
+                </button>
+            </div>
+        </div>
+
         <!-- Settings Panel -->
         <div class="bg-white rounded-2xl shadow-2xl p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4 header-font text-gray-800">📝 Diary Details</h2>
@@ -126,6 +168,7 @@
         let photoCount = 10;
         let uploadedImages = [];
         let imageFiles = [];
+        let generatedDiaryUrl = '';
 
         function setPhotoCount(count) {
             photoCount = count;
@@ -294,17 +337,12 @@
                 });
 
                 if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${partner1}-${partner2}-diary.html`;
-                    a.click();
+                    const data = await response.json();
+                    generatedDiaryUrl = window.location.origin + data.url;
                     
-                    setTimeout(() => {
-                        alert('🎉 Your diary has been created! Opening in a new tab...');
-                        window.open(url, '_blank');
-                    }, 500);
+                    // Show success popup
+                    document.getElementById('success-popup').classList.remove('hidden');
+                    
                 } else {
                     alert('Error generating diary. Please try again.');
                 }
@@ -315,6 +353,50 @@
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('generate-btn').disabled = false;
             }
+        }
+
+        function openDiary() {
+            if (generatedDiaryUrl) {
+                window.open(generatedDiaryUrl, '_blank');
+            }
+        }
+
+        function copyLink() {
+            if (generatedDiaryUrl) {
+                navigator.clipboard.writeText(generatedDiaryUrl).then(() => {
+                    const copyText = document.getElementById('copy-text');
+                    const copyIcon = document.getElementById('copy-icon');
+                    
+                    copyText.textContent = '✓ Copied!';
+                    copyIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+                    
+                    setTimeout(() => {
+                        copyText.textContent = 'Copy Link';
+                        copyIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>';
+                    }, 2000);
+                });
+            }
+        }
+
+        function downloadDiary() {
+            if (generatedDiaryUrl) {
+                const a = document.createElement('a');
+                a.href = generatedDiaryUrl;
+                a.download = 'our-diary.html';
+                a.click();
+            }
+        }
+
+        function closePopup() {
+            document.getElementById('success-popup').classList.add('hidden');
+            // Reset form
+            uploadedImages = Array(photoCount).fill(null);
+            imageFiles = Array(photoCount).fill(null);
+            document.getElementById('partner1').value = '';
+            document.getElementById('partner2').value = '';
+            renderUploadBoxes();
+            updateProgress();
+            generatedDiaryUrl = '';
         }
 
         // Initialize
