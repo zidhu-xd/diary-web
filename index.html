@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Couple Diary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Crimson Text', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .upload-box {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        .upload-box:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+        .upload-box.has-image {
+            border-color: #48bb78;
+            border-style: solid;
+        }
+        .image-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 0.5rem;
+        }
+        .delete-btn {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .upload-box:hover .delete-btn {
+            opacity: 1;
+        }
+        .toggle-btn {
+            transition: all 0.3s;
+        }
+        .toggle-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        .header-font {
+            font-family: 'Cinzel', serif;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8 mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-center mb-2 header-font bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Create Your Couple Diary
+            </h1>
+            <p class="text-center text-gray-600 text-lg">Upload your precious memories and create a beautiful interactive diary</p>
+        </div>
+
+        <!-- Settings Panel -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4 header-font text-gray-800">📝 Diary Details</h2>
+            
+            <div class="grid md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Partner 1 Name</label>
+                    <input type="text" id="partner1" placeholder="e.g., Sidharth" 
+                           class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Partner 2 Name</label>
+                    <input type="text" id="partner2" placeholder="e.g., Sophy" 
+                           class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none transition">
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Number of Photos</label>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="setPhotoCount(3)" class="toggle-btn px-6 py-2 rounded-lg border-2 border-gray-300 font-semibold">3 Photos</button>
+                    <button onclick="setPhotoCount(5)" class="toggle-btn px-6 py-2 rounded-lg border-2 border-gray-300 font-semibold">5 Photos</button>
+                    <button onclick="setPhotoCount(7)" class="toggle-btn px-6 py-2 rounded-lg border-2 border-gray-300 font-semibold">7 Photos</button>
+                    <button onclick="setPhotoCount(10)" class="toggle-btn active px-6 py-2 rounded-lg border-2 border-gray-300 font-semibold">10 Photos</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Grid -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4 header-font text-gray-800">📸 Upload Your Photos</h2>
+            <p class="text-gray-600 mb-6">Click on each box to upload a photo. First photo will be your cover page!</p>
+            
+            <div id="upload-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <!-- Upload boxes will be generated here -->
+            </div>
+        </div>
+
+        <!-- Progress and Submit -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6">
+            <div class="mb-4">
+                <div class="flex justify-between text-sm font-semibold text-gray-700 mb-2">
+                    <span>Upload Progress</span>
+                    <span id="progress-text">0/10 photos</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div id="progress-bar" class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <button id="generate-btn" onclick="generateDiary()" disabled
+                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-8 rounded-xl text-lg header-font shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                ✨ Generate My Diary
+            </button>
+
+            <div id="loading" class="hidden mt-4 text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
+                <p class="mt-2 text-gray-600 font-semibold">Creating your magical diary...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let photoCount = 10;
+        let uploadedImages = [];
+        let imageFiles = [];
+
+        function setPhotoCount(count) {
+            photoCount = count;
+            uploadedImages = Array(count).fill(null);
+            imageFiles = Array(count).fill(null);
+            
+            // Update toggle buttons
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderUploadBoxes();
+            updateProgress();
+        }
+
+        function renderUploadBoxes() {
+            const grid = document.getElementById('upload-grid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < photoCount; i++) {
+                const box = document.createElement('div');
+                box.className = 'upload-box relative rounded-lg overflow-hidden cursor-pointer aspect-[3/4] flex items-center justify-center';
+                box.id = `box-${i}`;
+                
+                if (uploadedImages[i]) {
+                    box.classList.add('has-image');
+                    box.innerHTML = `
+                        <img src="${uploadedImages[i]}" class="image-preview">
+                        <button onclick="removeImage(${i})" class="delete-btn absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 z-10">
+                            ×
+                        </button>
+                        <div class="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-xs font-semibold">
+                            ${i === 0 ? 'Cover' : `Photo ${i}`}
+                        </div>
+                    `;
+                } else {
+                    box.innerHTML = `
+                        <div class="text-center p-4">
+                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            <p class="text-sm text-gray-500 font-semibold">${i === 0 ? 'Cover Photo' : `Photo ${i}`}</p>
+                        </div>
+                    `;
+                }
+                
+                box.onclick = () => uploadImage(i);
+                grid.appendChild(box);
+            }
+        }
+
+        function uploadImage(index) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    // Compress and convert to base64
+                    compressImage(file, (compressed) => {
+                        imageFiles[index] = compressed;
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            uploadedImages[index] = e.target.result;
+                            renderUploadBoxes();
+                            updateProgress();
+                        };
+                        reader.readAsDataURL(compressed);
+                    });
+                }
+            };
+            input.click();
+        }
+
+        function compressImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // Max dimensions
+                    const MAX_WIDTH = 1200;
+                    const MAX_HEIGHT = 1600;
+                    
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    canvas.toBlob((blob) => {
+                        callback(blob);
+                    }, 'image/jpeg', 0.85);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage(index) {
+            event.stopPropagation();
+            uploadedImages[index] = null;
+            imageFiles[index] = null;
+            renderUploadBoxes();
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const uploaded = uploadedImages.filter(img => img !== null).length;
+            const percentage = (uploaded / photoCount) * 100;
+            
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            document.getElementById('progress-text').textContent = `${uploaded}/${photoCount} photos`;
+            
+            const generateBtn = document.getElementById('generate-btn');
+            if (uploaded >= 2) {
+                generateBtn.disabled = false;
+            } else {
+                generateBtn.disabled = true;
+            }
+        }
+
+        async function generateDiary() {
+            const partner1 = document.getElementById('partner1').value.trim() || 'Partner 1';
+            const partner2 = document.getElementById('partner2').value.trim() || 'Partner 2';
+            
+            const validImages = uploadedImages.filter(img => img !== null);
+            
+            if (validImages.length < 2) {
+                alert('Please upload at least 2 photos to create your diary!');
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('generate-btn').disabled = true;
+
+            const formData = new FormData();
+            formData.append('partner1', partner1);
+            formData.append('partner2', partner2);
+            
+            for (let i = 0; i < uploadedImages.length; i++) {
+                if (imageFiles[i]) {
+                    formData.append('images', imageFiles[i], `photo-${i}.jpg`);
+                }
+            }
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${partner1}-${partner2}-diary.html`;
+                    a.click();
+                    
+                    setTimeout(() => {
+                        alert('🎉 Your diary has been created! Opening in a new tab...');
+                        window.open(url, '_blank');
+                    }, 500);
+                } else {
+                    alert('Error generating diary. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error generating diary. Please try again.');
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('generate-btn').disabled = false;
+            }
+        }
+
+        // Initialize
+        renderUploadBoxes();
+    </script>
+</body>
+</html>
