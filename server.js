@@ -6,10 +6,10 @@ const fs = require('fs');
 const app = express();
 const PORT = 3000;
 
-// Create generated-diaries directory if it doesn't exist
-const generatedDir = path.join(__dirname, 'generated-diaries');
+// Use /tmp for generated-diaries in serverless
+const generatedDir = path.join('/tmp', 'generated-diaries');
 if (!fs.existsSync(generatedDir)) {
-    fs.mkdirSync(generatedDir);
+    fs.mkdirSync(generatedDir, { recursive: true });
 }
 
 // Configure multer for memory storage
@@ -65,19 +65,19 @@ app.post('/generate', upload.array('images', 10), async (req, res) => {
         const name1 = (partner1 || 'partner1').toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const name2 = (partner2 || 'partner2').toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const coupleSlug = `${name1}-${name2}`;
-        
+
         // Generate unique filename with timestamp to avoid collisions
         const timestamp = Date.now();
         const filename = `${coupleSlug}-${timestamp}.html`;
         const filepath = path.join(generatedDir, filename);
 
-        // Save the generated HTML
+        // Save the generated HTML to /tmp
         fs.writeFileSync(filepath, template);
 
         // Create the shareable URL with couple names
         const diaryUrl = `/diary/${coupleSlug}-${timestamp}`;
 
-        // Return the URL
+        // Return the URL and filename to client
         res.json({
             success: true,
             url: diaryUrl,
@@ -94,11 +94,11 @@ app.post('/generate', upload.array('images', 10), async (req, res) => {
 // Serve individual diary pages at /diary/:slug
 app.get('/diary/:slug', (req, res) => {
     const slug = req.params.slug;
-    
-    // Find the HTML file
-    const files = fs.readdirSync(generatedDir);
+
+    // Find the HTML file in /tmp
+    const files = fs.existsSync(generatedDir) ? fs.readdirSync(generatedDir) : [];
     const matchingFile = files.find(f => f.includes(slug) || f.replace('.html', '') === slug);
-    
+
     if (matchingFile) {
         const filepath = path.join(generatedDir, matchingFile);
         res.sendFile(filepath);
@@ -160,7 +160,7 @@ app.get('/diary/:slug', (req, res) => {
 app.get('/generated-diaries/:filename', (req, res) => {
     const filename = req.params.filename;
     const filepath = path.join(generatedDir, filename);
-    
+
     if (fs.existsSync(filepath)) {
         res.sendFile(filepath);
     } else {
@@ -178,6 +178,6 @@ app.listen(PORT, () => {
 ║                                            ║
 ║   Create your diary at:                    ║
 ║   http://localhost:${PORT}                    ║
-╚════════════════════════════════════════════╝
+╚═══════════════════════════════════��════════╝
     `);
 });
