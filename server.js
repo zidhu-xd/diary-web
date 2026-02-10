@@ -28,7 +28,6 @@ const upload = multer({
 
 // Serve static files
 app.use(express.static(__dirname));
-app.use('/generated-diaries', express.static(generatedDir));
 
 // Main route
 app.get('/', (req, res) => {
@@ -62,19 +61,28 @@ app.post('/generate', upload.array('images', 10), async (req, res) => {
         template = template.replace(/{{PARTNER1}}/g, partner1 || 'Partner 1');
         template = template.replace(/{{PARTNER2}}/g, partner2 || 'Partner 2');
 
-        // Generate unique filename
+        // Create URL-friendly slug from couple names
+        const name1 = (partner1 || 'partner1').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const name2 = (partner2 || 'partner2').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const coupleSlug = `${name1}-${name2}`;
+        
+        // Generate unique filename with timestamp to avoid collisions
         const timestamp = Date.now();
-        const filename = `diary-${timestamp}.html`;
+        const filename = `${coupleSlug}-${timestamp}.html`;
         const filepath = path.join(generatedDir, filename);
 
         // Save the generated HTML
         fs.writeFileSync(filepath, template);
 
+        // Create the shareable URL with couple names
+        const diaryUrl = `/diary/${coupleSlug}-${timestamp}`;
+
         // Return the URL
         res.json({
             success: true,
-            url: `/generated-diaries/${filename}`,
-            filename: filename
+            url: diaryUrl,
+            filename: filename,
+            coupleNames: `${partner1} & ${partner2}`
         });
 
     } catch (error) {
@@ -83,7 +91,93 @@ app.post('/generate', upload.array('images', 10), async (req, res) => {
     }
 });
 
+// Serve individual diary pages at /diary/:slug
+app.get('/diary/:slug', (req, res) => {
+    const slug = req.params.slug;
+    
+    // Find the HTML file
+    const files = fs.readdirSync(generatedDir);
+    const matchingFile = files.find(f => f.includes(slug) || f.replace('.html', '') === slug);
+    
+    if (matchingFile) {
+        const filepath = path.join(generatedDir, matchingFile);
+        res.sendFile(filepath);
+    } else {
+        res.status(404).send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Diary Not Found</title>
+                <style>
+                    body {
+                        font-family: 'Cinzel', serif;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        margin: 0;
+                        color: white;
+                        text-align: center;
+                    }
+                    .error-box {
+                        background: rgba(255,255,255,0.1);
+                        backdrop-filter: blur(10px);
+                        padding: 50px;
+                        border-radius: 20px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                    }
+                    h1 { font-size: 60px; margin: 0 0 20px 0; }
+                    p { font-size: 20px; margin: 10px 0; }
+                    a {
+                        display: inline-block;
+                        margin-top: 30px;
+                        padding: 15px 40px;
+                        background: white;
+                        color: #667eea;
+                        text-decoration: none;
+                        border-radius: 50px;
+                        font-weight: bold;
+                        transition: transform 0.2s;
+                    }
+                    a:hover { transform: translateY(-3px); }
+                </style>
+            </head>
+            <body>
+                <div class="error-box">
+                    <h1>📖 404</h1>
+                    <p>Diary not found</p>
+                    <p>This diary may have been removed or the link is incorrect.</p>
+                    <a href="/">Create Your Own Diary</a>
+                </div>
+            </body>
+            </html>
+        `);
+    }
+});
+
+// Alternative route: /generated-diaries/:filename (for direct access)
+app.get('/generated-diaries/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filepath = path.join(generatedDir, filename);
+    
+    if (fs.existsSync(filepath)) {
+        res.sendFile(filepath);
+    } else {
+        res.status(404).send('Diary not found');
+    }
+});
+
 app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`📖 Create your couple diary at http://localhost:${PORT}`);
+    console.log(`
+╔════════════════════════════════════════════╗
+║   💕 Couple Diary Generator                ║
+║                                            ║
+║   Server running at:                       ║
+║   http://localhost:${PORT}                    ║
+║                                            ║
+║   Create your diary at:                    ║
+║   http://localhost:${PORT}                    ║
+╚════════════════════════════════════════════╝
+    `);
 });
